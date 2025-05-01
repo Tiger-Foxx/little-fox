@@ -771,7 +771,7 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         }
                     } else {
-                        vscode.window.showWarningMessage('Aucun changement détecté à commiter.');
+                        vscode.window.showWarningMessage('Aucun changement détecté faites un \'git add -A\' pour que je les vois.');
                     }
                 });
             } catch (error) {
@@ -1004,7 +1004,7 @@ export function activate(context: vscode.ExtensionContext) {
     
     // Afficher un message de bienvenue
     vscode.window.showInformationMessage(
-        `${configuration.getString('welcome')} Utilisez les commandes du menu ou la barre latérale pour interagir avec moi!`,
+        `${configuration.getString('welcome')} ! Et utilisez les commandes du menu ou la barre latérale pour interagir avec moi!`,
         'Voir le tableau de bord'
     ).then(selection => {
         if (selection === 'Voir le tableau de bord') {
@@ -1024,14 +1024,14 @@ export function activate(context: vscode.ExtensionContext) {
  */
 async function getGitChanges(): Promise<string | undefined> {
     try {
-        // 1. Obtenir l'extension Git et l'API
+        // 1. Obtenir l'extension Git et l'API (Tes logs sont conservés)
+        console.log("Tentative d'obtention de l'extension Git...");
         const gitExtension = vscode.extensions.getExtension<{ getAPI(version: number): any }>('vscode.git');
         if (!gitExtension) {
             vscode.window.showWarningMessage('L\'extension Git n\'est pas activée ou installée.');
             console.error("Extension Git non trouvée.");
             return undefined;
         }
-        // Il est préférable d'activer l'extension explicitement si elle ne l'est pas déjà
         console.log("Extension Git trouvée, activation...");
         await gitExtension.activate();
         console.log("Extension Git activée.");
@@ -1045,22 +1045,17 @@ async function getGitChanges(): Promise<string | undefined> {
        }
        console.log("API Git initialisée. Recherche de dépôts...");
 
-        // 2. Trouver le bon dépôt (s'il y en a plusieurs ouverts)
-        // Si tu travailles dans le contexte d'un fichier ouvert, tu peux essayer de trouver le repo correspondant
-         // 2. Trouver le bon dépôt (Ajout de logs ici)
+        // 2. Trouver le bon dépôt (Ta logique est conservée)
         const currentWorkspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-        let repo: any = undefined; // Utiliser 'any' pour faciliter le logging
-        
+        let repo: any = undefined;
         if (currentWorkspaceFolder) {
          console.log(`Recherche du dépôt pour le workspace: ${currentWorkspaceFolder.uri.fsPath}`);
         repo = api.getRepository(currentWorkspaceFolder.uri);
             console.log(`Dépôt trouvé pour le workspace: ${repo ? repo.rootUri?.fsPath : 'Non trouvé'}`);
         }
-        
-
         if (!repo && api.repositories && api.repositories.length > 0) {
             console.log(`Aucun dépôt pour le workspace ou pas de workspace. ${api.repositories.length} dépôt(s) disponible(s).`);
-            repo = api.repositories[0]; // Prend le premier par défaut
+            repo = api.repositories[0];
             console.log(`Utilisation du premier dépôt trouvé: ${repo ? repo.rootUri?.fsPath : 'Invalide?'}`);
              if (api.repositories.length > 1) {
                  vscode.window.showInformationMessage(`Plusieurs dépôts Git ouverts. Utilisation de: ${repo?.rootUri?.fsPath}`);
@@ -1070,7 +1065,8 @@ async function getGitChanges(): Promise<string | undefined> {
              vscode.window.showWarningMessage('Aucun dépôt Git trouvé dans l\'espace de travail.');
              return undefined;
         }
-        // ---- LOG CRUCIAL ICI ----
+
+        // Tes logs d'introspection sont conservés
         console.log('Vérification de l\'objet "repo" final avant d\'accéder à "state":', repo);
         if (!repo || typeof repo !== 'object') {
              console.error("L'objet 'repo' n'est pas valide ou est undefined.");
@@ -1080,83 +1076,114 @@ async function getGitChanges(): Promise<string | undefined> {
         try {
             console.log('Clés de l\'objet repo:', Object.keys(repo));
             console.log('Vérification de repo.state:', repo.state ? 'existe' : 'N\'EXISTE PAS');
-            console.log('Vérification de repo.diffIndexWithHead:', typeof repo.diffIndexWithHead); // Affiche 'function' ou 'undefined'
+            console.log('Vérification de repo.diffIndexWithHead:', typeof repo.diffIndexWithHead);
+            console.log('Vérification de repo.diffWith:', typeof repo.diffWith); // Ajout vérification pour diffWith
         } catch(logError) {
              console.error("Erreur lors de l'introspection de l'objet repo:", logError)
         }
-        // 3. Vérifier les changements STAGED (indexés)
+
+        // 3. Vérifier les changements (Indexés ET Non-indexés)
         if (!repo.state) {
             console.error("L'objet repo n'a pas de propriété 'state'.");
             vscode.window.showErrorMessage("Erreur: L'objet dépôt Git est incomplet.");
             return undefined;
         }
-
-
-        // 3. Vérifier les changements STAGED (indexés)
         const stagedChanges = repo.state.indexChanges;
-        console.log(`Nombre de changements indexés trouvés: ${stagedChanges.length}`);
-        if (stagedChanges.length === 0) {
-            vscode.window.showInformationMessage('Aucun changement indexé (staged) à commiter.');
-            // Retourner une chaîne vide ou un message spécifique est peut-être mieux qu'undefined
-            return "Aucun changement indexé (staged) détecté.";
+        const unstagedChanges = repo.state.workingTreeChanges; // <-- Récupération des changements non-indexés
+        console.log(`Changements indexés: ${stagedChanges.length}, Non-indexés: ${unstagedChanges.length}`);
+
+        // Modification: vérifier si les *deux* sont vides
+        if (stagedChanges.length === 0 && unstagedChanges.length === 0) {
+            vscode.window.showInformationMessage('Aucun changement détecté (ni indexé, ni dans l\'arbre de travail).');
+            return "Aucun changement détecté.";
         }
 
-        // 4. Construire le résumé et le diff
-        let changesSummary = `Résumé des changements indexés (${stagedChanges.length} fichier(s)):\n\n`;
-        const diffPromises: Promise<string | null>[] = []; // Pour récupérer les diffs en parallèle
+        // 4. Construire le résumé et les promesses de diff
+        let changesSummary = `Résumé des changements détectés:\n\n`;
+        // Utiliser une structure pour stocker les promesses avec le nom de fichier et le type de diff
+        const diffPromisesInfo: { fileName: string, type: 'staged' | 'unstaged', promise: Promise<string | null> }[] = [];
+        const processedUnstagedPaths = new Set<string>(); // Pour éviter de traiter deux fois les diffs working tree
 
-        for (const change of stagedChanges) {
-            // Ajouter le nom et le statut du fichier au résumé
-            const fileName = change.uri.fsPath.substring(repo.rootUri.fsPath.length + 1); // Chemin relatif
-            // Le statut des indexChanges est différent (ex: IndexAdded, IndexModified)
-            changesSummary += `- ${fileName} (${gitStatusToString(change.status)})\n`;
+        // -- Partie 1: Traiter les changements indexés (comme avant) --
+        changesSummary += "--- Changements Indexés (Staged) ---\n";
+        if (stagedChanges.length > 0) {
+            for (const change of stagedChanges) {
+                const fileName = change.uri.fsPath.substring(repo.rootUri.fsPath.length + 1);
+                changesSummary += `- ${fileName} (${gitStatusToString(change.status)})\n`;
+                processedUnstagedPaths.add(change.uri.fsPath); // Marquer comme traité pour diff working tree
 
-
-            // Préparer la promesse pour obtenir le diff de ce fichier indexé vs HEAD
-            console.log(`Tentative d'appel à diffIndexWithHead pour ${fileName}`);
-            if (typeof repo.diffIndexWithHead !== 'function') {
-                 console.error(`ERREUR: repo.diffIndexWithHead n'est PAS une fonction sur l'objet repo actuel!`);
-                 // On peut décider de sauter ce fichier ou de retourner une erreur spécifique
-                 diffPromises.push(Promise.resolve(`[Erreur: diff indisponible pour ${fileName}]`));
-                 continue; // Passe au fichier suivant
+                let promise: Promise<string | null>;
+                if (typeof repo.diffIndexWithHead === 'function') {
+                    promise = repo.diffIndexWithHead(change.uri.fsPath);
+                } else {
+                    console.error(`ERREUR: repo.diffIndexWithHead n'est PAS une fonction!`);
+                    promise = Promise.resolve(`[Erreur: diff indexé indisponible pour ${fileName}]`);
+                }
+                diffPromisesInfo.push({ fileName: fileName, type: 'staged', promise: promise.catch(e => `[Erreur diff indexé: ${e.message}]`) });
             }
-            diffPromises.push(
-                repo.diffIndexWithHead(change.uri.fsPath).catch((diffError: any) => {
-                    console.error(`Erreur lors de la récupération du diff pour ${fileName}:`, diffError);
-                    return `Impossible de récupérer le diff pour ${fileName}.`; // Retourne un message d'erreur au lieu de null
-                })
-            );
+        } else {
+            changesSummary += "(Aucun)\n";
         }
 
-        // Attendre que tous les diffs soient récupérés
-        const diffResults = await Promise.all(diffPromises);
+        // -- Partie 2: Traiter les changements non-indexés --
+        changesSummary += "\n--- Changements Non-Indexés (Working Tree) ---\n";
+        const unstagedFilesToDiff: { change: any, fileName: string }[] = []; // Pour diffWith
 
-        // Ajouter les diffs au résumé (en les limitant)
+        if (unstagedChanges.length > 0) {
+            for (const change of unstagedChanges) {
+                const fileName = change.uri.fsPath.substring(repo.rootUri.fsPath.length + 1);
+                changesSummary += `- ${fileName} (${gitStatusToString(change.status)})\n`;
+
+                // IMPORTANT: On ne récupère le diff working tree QUE si le fichier n'était pas déjà traité comme "staged".
+                // Le diff "staged" (vs HEAD) est généralement plus utile pour le commit.
+                // Si tu VEUX *aussi* le diff working tree pour les fichiers staged+modifiés, il faudrait adapter ici.
+                if (!processedUnstagedPaths.has(change.uri.fsPath)) {
+                    let promise: Promise<string | null>;
+                     if (typeof repo.diffWith === 'function') {
+                         promise = repo.diffWith(change.uri.fsPath); // Utilise diffWith
+                     } else {
+                         console.error(`ERREUR: repo.diffWith n'est PAS une fonction!`);
+                         promise = Promise.resolve(`[Erreur: diff non-indexé indisponible pour ${fileName}]`);
+                     }
+                    diffPromisesInfo.push({ fileName: fileName, type: 'unstaged', promise: promise.catch(e => `[Erreur diff non-indexé: ${e.message}]`) });
+                }
+            }
+        } else {
+            changesSummary += "(Aucun)\n";
+        }
+
+        // 5. Attendre que TOUS les diffs (staged + unstaged sélectionnés) soient récupérés
+        const allPromises = diffPromisesInfo.map(info => info.promise);
+        const allDiffResults = await Promise.all(allPromises);
+
+        // 6. Ajouter les diffs au résumé
         changesSummary += "\n--- Diff Détails ---\n";
-        diffResults.forEach((diff, index) => {
-            const change = stagedChanges[index];
-            const fileName = change.uri.fsPath.substring(repo.rootUri.fsPath.length + 1);
-            changesSummary += `\n--- ${fileName} ---\n`;
-            if (diff) {
-                const diffLines = diff.split('\n');
-                // Limite pour éviter de surcharger l'IA
+        diffPromisesInfo.forEach((info, index) => {
+            const diffContent = allDiffResults[index];
+            // Ajoute une section pour chaque diff récupéré
+            changesSummary += `\n--- ${info.fileName} (${info.type === 'staged' ? 'Indexé vs HEAD' : 'Non-indexé vs Index'}) ---\n`;
+            if (typeof diffContent === 'string') {
+                const diffLines = diffContent.split('\n'); // Maintenant c'est sûr
                 const maxLines = 30;
                 if (diffLines.length > maxLines) {
                     changesSummary += diffLines.slice(0, maxLines).join('\n') + '\n... (diff tronqué)\n';
                 } else {
-                    changesSummary += diff + '\n';
+                    changesSummary += diffContent + '\n'; // Affiche le contenu (peut être le diff ou notre message d'erreur)
                 }
-            } else if (diff === null) { // Si une erreur était retournée comme null (maintenant géré avec un message d'erreur)
-                 changesSummary += `Impossible de récupérer le diff pour ${fileName}.\n`;
+            } else {
+                 // Si ce n'est pas une string (probablement null ou undefined si diff vide/non applicable)
+                 changesSummary += "(Aucun changement ou diff indisponible)\n";
             }
         });
 
-
-        return changesSummary.trim(); // Enlever les espaces superflus à la fin
+        return changesSummary.trim();
 
     } catch (error) {
-        console.error('Erreur générale lors de la récupération des changements Git indexés:', error);
-        vscode.window.showErrorMessage('Erreur lors de la récupération des changements Git. Voir la console pour les détails.');
+        console.error('Erreur générale lors de la récupération des changements Git:', error);
+         if (error instanceof Error) {
+             console.error('Stack:', error.stack);
+         }
+        vscode.window.showErrorMessage('Erreur lors de la récupération des changements Git. Voir la console (Developer Tools) pour les détails.');
         return undefined;
     }
 }

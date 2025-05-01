@@ -50,7 +50,7 @@ export class Configuration {
                 code: 'fr',
                 name: 'Français (Fallback)',
                 localizedStrings: {
-                    'welcome': 'Bienvenue dans Little Fox! 🦊 (Mode Fallback)',
+                    'welcome': 'Saluuut je suis Little Fox! 🦊 (Mode Fallback)',
                     'error_api': 'Erreur API. Le renard est probablement en train de faire une sieste.',
                     'error_general': 'Oups, quelque chose a mal tourné. Même le renard ne sait pas quoi.',
                     'success': 'Opération réussie ! Le renard approuve... pour l\'instant.',
@@ -73,7 +73,7 @@ export class Configuration {
                     name: 'Français',
                     localizedStrings: {
                         // --- General ---
-                        'welcome': 'Bienvenue dans Little Fox! Votre assistant sarcastique personnel. 🦊',
+                        'welcome': 'Coucou ! moi c\'est  Little Fox ! ton assistant sarcastique personnel. 🦊\nTu peux selectionner un bloc de code et me trouver dans le menu contextuel',
                         'loading': 'Analyse en cours... J\'essaie de comprendre ce que vous avez fait.',
                         'error_general': 'Erreur générale. Franchement, je ne suis même pas surpris.',
                         'error_api': 'L\'API fait la tête. Peut-être qu\'elle n\'aime pas votre code non plus ?',
