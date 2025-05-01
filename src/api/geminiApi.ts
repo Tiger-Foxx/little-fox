@@ -1,54 +1,18 @@
-import axios, { AxiosError, AxiosResponse } from 'axios';
 import * as vscode from 'vscode';
+import { GoogleGenerativeAI, GenerativeModel, GenerationConfig, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { AIProvider, CompletionOptions, ProviderStatus } from './apiManager';
 import { Configuration } from '../utils/configuration';
 import { ErrorHandler } from '../utils/errorHandler';
 
-interface GeminiRequestContent {
-    parts: {
-        text: string;
-    }[];
-}
-
-interface GeminiRequestBody {
-    contents: GeminiRequestContent[];
-    generationConfig?: {
-        maxOutputTokens?: number;
-        temperature?: number;
-        topP?: number;
-        topK?: number;
-    };
-}
-
-interface GeminiResponseContentPart {
-    text: string;
-}
-
-interface GeminiResponseContent {
-    parts: GeminiResponseContentPart[];
-}
-
-interface GeminiCandidate {
-    content: GeminiResponseContent;
-    finishReason: string;
-    index: number;
-}
-
-interface GeminiResponse {
-    candidates: GeminiCandidate[];
-    promptFeedback?: {
-        blockReason?: string;
-    };
-}
-
 export class GeminiApi implements AIProvider {
     private configuration: Configuration;
-    private readonly apiEndpoint = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent';
     private cachedStatus: ProviderStatus = ProviderStatus.READY;
     private lastStatusCheck: number = 0;
     private statusCheckInterval: number = 60000; // Check status every minute
-    private requestTimeoutMs: number = 30000; // 30 seconds timeout
     private requestRetries: number = 2;
+    private modelName: string = 'gemini-2.0-flash';
+    private genAI: GoogleGenerativeAI | null = null;
+    private model: GenerativeModel | null = null;
     
     // API key par défaut - dans une vraie application, la stocker de manière sécurisée
     private DEFAULT_API_KEY = 'AIzaSyDZH3jlitdjcJZA07SF4IMQv0D75ZnmqK0';
@@ -56,8 +20,29 @@ export class GeminiApi implements AIProvider {
     constructor(configuration: Configuration) {
         this.configuration = configuration;
         
+        // Initialiser le client Google GenAI
+        this.initializeClient();
+        
         // Vérifier le statut initial
         this.checkProviderStatus();
+    }
+    
+    private async initializeClient(): Promise<void> {
+        try {
+            const apiKey = await this.getApiKey();
+            
+            if (apiKey) {
+                this.genAI = new GoogleGenerativeAI(apiKey);
+                this.model = this.genAI.getGenerativeModel({ model: this.modelName });
+                console.log('Client Google GenAI initialisé avec succès');
+            } else {
+                console.error('Impossible d\'initialiser le client Google GenAI : clé API manquante');
+                this.cachedStatus = ProviderStatus.UNAUTHORIZED;
+            }
+        } catch (error) {
+            console.error('Erreur lors de l\'initialisation du client Google GenAI:', error);
+            this.cachedStatus = ProviderStatus.ERROR;
+        }
     }
     
     getProviderName(): string {
@@ -85,51 +70,35 @@ export class GeminiApi implements AIProvider {
                 return;
             }
             
-            // Faire une petite requête pour vérifier que l'API fonctionne
-            const response = await axios.post(
-                this.apiEndpoint,
-                {
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text: "Réponds juste par 'OK' s'il te plaît."
-                                }
-                            ]
-                        }
-                    ],
-                    generationConfig: {
-                        maxOutputTokens: 10
-                    }
-                },
-                {
-                    params: {
-                        key: apiKey
-                    },
-                    timeout: 10000 // Court timeout pour la vérification
-                }
-            );
-            
-            if (response.status === 200) {
-                this.cachedStatus = ProviderStatus.READY;
-            } else {
-                this.cachedStatus = ProviderStatus.ERROR;
+            // Réinitialiser le client si nécessaire
+            if (!this.genAI || !this.model) {
+                await this.initializeClient();
             }
-        } catch (error) {
-            const axiosError = error as AxiosError;
             
-            if (axiosError.response) {
-                if (axiosError.response.status === 401 || axiosError.response.status === 403) {
-                    this.cachedStatus = ProviderStatus.UNAUTHORIZED;
-                } else if (axiosError.response.status === 429) {
-                    this.cachedStatus = ProviderStatus.RATE_LIMITED;
+            // Faire une petite requête pour vérifier que l'API fonctionne
+            if (this.model) {
+                const result = await this.model.generateContent("Réponds juste par 'OK' s'il te plaît.");
+                const response = await result.response;
+                const text = response.text();
+                
+                if (text && text.trim().length > 0) {
+                    this.cachedStatus = ProviderStatus.READY;
                 } else {
                     this.cachedStatus = ProviderStatus.ERROR;
                 }
-            } else if (axiosError.code === 'ECONNABORTED') {
-                this.cachedStatus = ProviderStatus.UNAVAILABLE;
             } else {
                 this.cachedStatus = ProviderStatus.UNAVAILABLE;
+            }
+        } catch (error: any) {
+            // Gérer les erreurs spécifiques
+            if (error.message?.includes('API key')) {
+                this.cachedStatus = ProviderStatus.UNAUTHORIZED;
+            } else if (error.message?.includes('quota') || error.message?.includes('rate')) {
+                this.cachedStatus = ProviderStatus.RATE_LIMITED;
+            } else if (error.message?.includes('timeout') || error.message?.includes('connection')) {
+                this.cachedStatus = ProviderStatus.UNAVAILABLE;
+            } else {
+                this.cachedStatus = ProviderStatus.ERROR;
             }
             
             console.error('Erreur lors de la vérification du statut de Gemini API:', error);
@@ -137,81 +106,106 @@ export class GeminiApi implements AIProvider {
     }
     
     async generateCompletion(prompt: string, options?: CompletionOptions): Promise<string | undefined> {
-        const apiKey = await this.getApiKey();
-        
-        if (!apiKey) {
-            vscode.window.showErrorMessage('Clé API Gemini non configurée. Veuillez la configurer dans les paramètres de Little Fox.');
-            return undefined;
+        if (!this.model) {
+            await this.initializeClient();
+            if (!this.model) {
+                vscode.window.showErrorMessage('Impossible d\'initialiser le client Gemini. Veuillez vérifier votre clé API.');
+                return undefined;
+            }
         }
         
-        const requestBody: GeminiRequestBody = {
-            contents: [
-                {
-                    parts: [
-                        {
-                            text: prompt
-                        }
-                    ]
-                }
-            ],
-            generationConfig: {
-                maxOutputTokens: options?.maxTokens || 500,
-                temperature: options?.temperature || 0.7,
-                topP: 0.95,
-                topK: 40
-            }
+        // Configurer la génération selon les options
+        const generationConfig: GenerationConfig = {
+            maxOutputTokens: options?.maxTokens || 500,
+            temperature: options?.temperature || 0.7,
+            topP: 0.95,
+            topK: 40,
         };
+        
+        // Configurer les paramètres de sécurité
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            }
+        ];
         
         // Stratégie de retry avec exponential backoff
         for (let attempt = 0; attempt <= this.requestRetries; attempt++) {
             try {
-                const response = await axios.post<GeminiResponse>(
-                    this.apiEndpoint,
-                    requestBody,
-                    {
-                        params: {
-                            key: apiKey
-                        },
-                        timeout: options?.timeoutMs || this.requestTimeoutMs
-                    }
+                // Créer un timeout
+                const timeout = options?.timeoutMs || 30000;
+                const timeoutPromise = new Promise<never>((_, reject) => 
+                    setTimeout(() => reject(new Error("Délai d'attente dépassé")), timeout)
                 );
+                
+                // Effectuer la requête avec la gestion du timeout
+                const generateRequest = this.model.generateContent(prompt);
+            const result = await Promise.race([
+                generateRequest,
+                timeoutPromise
+            ]);
+                
+                if (result instanceof Error) {
+                    throw result; // Propager l'erreur de timeout
+                }
+                
+                // Traiter la réponse
+                const response = await result.response;
+                const text = response.text().trim();
                 
                 this.cachedStatus = ProviderStatus.READY;
                 
-                // Traiter la réponse en fonction de la structure de Gemini API
-                if (this.isValidGeminiResponse(response.data)) {
-                    return this.extractTextFromGeminiResponse(response.data);
+                if (text) {
+                    return text;
                 } else {
-                    console.warn('Réponse Gemini valide mais sans contenu texte:', response.data);
+                    console.warn('Réponse Gemini valide mais sans contenu texte:', response);
                     return undefined;
                 }
-            } catch (error) {
-                const axiosError = error as AxiosError;
-                
-                // Mettre à jour le statut du provider en fonction de l'erreur
-                if (axiosError.response) {
-                    if (axiosError.response.status === 401 || axiosError.response.status === 403) {
-                        this.cachedStatus = ProviderStatus.UNAUTHORIZED;
-                        vscode.window.showErrorMessage('Clé API Gemini invalide ou expirée.');
-                        return undefined;
-                    } else if (axiosError.response.status === 429) {
-                        this.cachedStatus = ProviderStatus.RATE_LIMITED;
-                        
-                        // Si ce n'est pas la dernière tentative, attendre et réessayer
-                        if (attempt < this.requestRetries) {
-                            const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff
-                            console.log(`Rate limited. Attente de ${waitTime}ms avant de réessayer...`);
-                            await this.sleep(waitTime);
-                            continue;
-                        }
-                        
-                        vscode.window.showWarningMessage('Limite de requêtes Gemini atteinte. Réessayez plus tard ou changez de fournisseur d\'API.');
-                        return undefined;
-                    } else {
-                        this.cachedStatus = ProviderStatus.ERROR;
+            } catch (error: any) {
+                // Gérer les différents types d'erreur
+                if (error.message?.includes('API key')) {
+                    this.cachedStatus = ProviderStatus.UNAUTHORIZED;
+                    vscode.window.showErrorMessage('Clé API Gemini invalide ou expirée.');
+                    return undefined;
+                } else if (error.message?.includes('quota') || error.message?.includes('rate')) {
+                    this.cachedStatus = ProviderStatus.RATE_LIMITED;
+                    
+                    // Si ce n'est pas la dernière tentative, attendre et réessayer
+                    if (attempt < this.requestRetries) {
+                        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff
+                        console.log(`Rate limited. Attente de ${waitTime}ms avant de réessayer...`);
+                        await this.sleep(waitTime);
+                        continue;
+                    }
+                    
+                    vscode.window.showWarningMessage('Limite de requêtes Gemini atteinte. Réessayez plus tard ou changez de fournisseur d\'API.');
+                    return undefined;
+                } else if (error.message?.includes('timeout')) {
+                    this.cachedStatus = ProviderStatus.UNAVAILABLE;
+                    
+                    if (attempt < this.requestRetries) {
+                        const waitTime = Math.pow(2, attempt) * 1000;
+                        console.log(`Timeout. Attente de ${waitTime}ms avant de réessayer...`);
+                        await this.sleep(waitTime);
+                        continue;
                     }
                 } else {
-                    this.cachedStatus = ProviderStatus.UNAVAILABLE;
+                    this.cachedStatus = error.message?.includes('connect') 
+                        ? ProviderStatus.UNAVAILABLE 
+                        : ProviderStatus.ERROR;
                 }
                 
                 // Si c'est la dernière tentative, journaliser et renvoyer undefined
@@ -228,26 +222,6 @@ export class GeminiApi implements AIProvider {
         }
         
         return undefined;
-    }
-    
-    private isValidGeminiResponse(response: GeminiResponse): boolean {
-        return !!(
-            response &&
-            response.candidates &&
-            response.candidates.length > 0 &&
-            response.candidates[0].content &&
-            response.candidates[0].content.parts &&
-            response.candidates[0].content.parts.length > 0 &&
-            response.candidates[0].content.parts[0].text
-        );
-    }
-    
-    private extractTextFromGeminiResponse(response: GeminiResponse): string | undefined {
-        if (!this.isValidGeminiResponse(response)) {
-            return undefined;
-        }
-        
-        return response.candidates[0].content.parts[0].text.trim();
     }
     
     private async getApiKey(): Promise<string | undefined> {

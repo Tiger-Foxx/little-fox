@@ -135,7 +135,7 @@ class Dashboard {
                 }
                 
                 this.updateWebviewContent();
-            }, 1500);
+            }, 8500);
         } catch (error) {
             this.panel?.webview.postMessage({ 
                 command: 'apiTestCompleted', 

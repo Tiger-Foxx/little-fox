@@ -267,6 +267,7 @@ export class ApiManager {
             - Environ 3 à 5 phrases.
             - Ton poétique, métaphorique, basé sur la nature/les renards.
             - L'histoire doit refléter la fonction ou la structure du code fourni.
+            - tu n'es pas un asistant inutile donc tu te dois d'etre bien explicatif et tres clair en fait , tu es certes un compteur mais tu sers srutout a comprendre donc ne pas pas trop dans les methaphores
 
             Code à transformer en histoire:
             \`\`\`

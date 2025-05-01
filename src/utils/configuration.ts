@@ -110,7 +110,7 @@ export class Configuration {
                         'roast_fallback_25': 'Ce n\'est pas un bug, c\'est une "fonctionnalité non documentée et très surprenante".',
 
                         // --- Storyteller ---
-                        'story_title': 'La Légende (ou la Tragédie) de Votre Code',
+                        'story_title': 'comprendre l\'histoire de ce bloc',
                         'story_loading': 'Consultation des anciennes chroniques pour raconter l\'histoire de ce... truc.',
                         'story_error': 'L\'histoire de ce code est trop sombre pour être racontée. Ou juste trop ennuyeuse.',
                         'story_fallback_1': 'Il était une fois, un développeur plein d\'espoir, qui écrivit ce code. La suite est moins joyeuse.',
