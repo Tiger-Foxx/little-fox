@@ -1,0 +1,236 @@
+{
+  "name": "little-fox",
+  "displayName": "Little Fox",
+  "description": "Un assistant renard intelligent qui commente votre code avec humour, raconte son histoire, et génère des messages de commit honnêtes",
+  "version": "0.1.0",
+  "publisher": "theTigerFox",
+  "icon": "resources/images/fox-icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages",
+    "Snippets",
+    "Formatters"
+  ],
+  "keywords": [
+    "ai",
+    "assistant",
+    "code",
+    "review",
+    "fox",
+    "humor",
+    "commit",
+    "storyteller"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "little-fox.codeRoast",
+        "title": "Little Fox: Critique mon code avec humour",
+        "category": "Little Fox",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "little-fox.codeStoryteller",
+        "title": "Little Fox: Raconte l'histoire de ce code",
+        "category": "Little Fox",
+        "icon": "$(book)"
+      },
+      {
+        "command": "little-fox.generateCommitMessage",
+        "title": "Little Fox: Génère un message de commit honnête",
+        "category": "Little Fox",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "little-fox.openSettings",
+        "title": "Little Fox: Ouvrir les paramètres",
+        "category": "Little Fox",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "little-fox.setLanguage",
+        "title": "Little Fox: Changer de langue",
+        "category": "Little Fox",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "little-fox.showAbout",
+        "title": "Little Fox: À propos",
+        "category": "Little Fox",
+        "icon": "$(info)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "little-fox.codeRoast",
+          "group": "littleFox@1",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "little-fox.codeStoryteller",
+          "group": "littleFox@2",
+          "when": "editorTextFocus"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "little-fox.generateCommitMessage",
+          "group": "navigation",
+          "when": "scmProvider == git"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Little Fox",
+      "properties": {
+        "littleFox.apiProvider": {
+          "type": "string",
+          "default": "gemini",
+          "enum": [
+            "gemini",
+            "groq"
+          ],
+          "enumDescriptions": [
+            "Utiliser l'API Gemini de Google",
+            "Utiliser l'API Groq (compatible OpenAI)"
+          ],
+          "description": "Sélectionnez le fournisseur d'API à utiliser"
+        },
+        "littleFox.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Votre clé API personnelle pour Gemini (laisser vide pour utiliser la clé par défaut)"
+        },
+        "littleFox.groqApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Votre clé API personnelle pour Groq (laisser vide pour utiliser la clé par défaut)"
+        },
+        "littleFox.language": {
+          "type": "string",
+          "default": "fr",
+          "enum": [
+            "fr",
+            "en",
+            "es",
+            "de"
+          ],
+          "enumDescriptions": [
+            "Français",
+            "English",
+            "Español",
+            "Deutsch"
+          ],
+          "description": "Langue de l'interface (les messages de fallback restent en français)"
+        },
+        "littleFox.autoRoastOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Critiquer automatiquement le code lors de la sauvegarde"
+        },
+        "littleFox.showStatusBarItem": {
+          "type": "boolean",
+          "default": true,
+          "description": "Afficher l'icône Little Fox dans la barre d'état"
+        },
+        "littleFox.humorLevel": {
+          "type": "string",
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "extreme"
+          ],
+          "enumDescriptions": [
+            "Légèrement humoristique",
+            "Moyennement humoristique",
+            "Très humoristique",
+            "Extrêmement humoristique (attention, peut être sarcastique)"
+          ],
+          "description": "Niveau d'humour dans les commentaires et messages"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "little-fox.codeRoast",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r"
+      },
+      {
+        "command": "little-fox.codeStoryteller",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s"
+      },
+      {
+        "command": "little-fox.generateCommitMessage",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "little-fox-sidebar",
+          "title": "Little Fox",
+          "icon": "resources/images/fox-icon.png"
+        }
+      ]
+    },
+    "views": {
+      "little-fox-sidebar": [
+        {
+          "id": "little-fox-dashboard",
+          "name": "Dashboard",
+          "icon": "$(home)",
+          "contextualTitle": "Little Fox Dashboard"
+        },
+        {
+          "id": "little-fox-history",
+          "name": "Historique",
+          "icon": "$(history)",
+          "contextualTitle": "Historique des actions"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.99.1",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "globals": "^16.0.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.31.1",
+    "webpack": "^5.99.7",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.9.0",
+    "diff": "^7.0.0"
+  }
+}
