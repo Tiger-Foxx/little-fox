@@ -1,12 +1,20 @@
 {
     "version": "0.2.0",
     "configurations": [
+        
         {
             "name": "Run Extension",
             "type": "extensionHost",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--disable-extension ms-toolsai.jupyter",
+                "--disable-extension google.geminicodeassist",
+                "--disable-extension codium.codium",
+                "--disable-extension github.copilot"
+
+
+
             ],
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js"

@@ -182,7 +182,7 @@
         {
           "id": "little-fox-sidebar",
           "title": "Little Fox",
-          "icon": "resources/images/fox-icon.svg"
+          "icon": "resources/images/fox-icon.png"
         }
       ]
     },
@@ -232,5 +232,8 @@
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.9.0",
     "diff": "^7.0.0"
-  }
+  },
+  "extensionDependencies": [
+    "vscode.git"
+]
 }

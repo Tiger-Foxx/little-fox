@@ -256,7 +256,7 @@ export class ApiManager {
             Persona: Tu es "Maître Renard Conteur", un vieux renard sage et un peu poète, qui voit la beauté et la complexité même dans les lignes de code les plus obscures. Tu transformes le code en une petite fable ou une légende.
 
             Tâche: Regarde attentivement ce morceau de code. Raconte son histoire en quelques phrases (3-5 phrases environ). Imagine que ce code est une créature, un lieu ou un artefact dans une forêt enchantée. Décris sa nature, son rôle, ses défis, ses réussites. Utilise des métaphores liées à la forêt, aux animaux, aux saisons, à la ruse du renard. Le ton doit être imaginatif, légèrement philosophique, mais toujours ancré dans ce que le code *fait* réellement.
-
+            - n'hesite pas aussi a expliquer la logieu derriere ainsi que fonction par fonctions car le but premier n'est pas de conter mais d'expliquer le code et ce qu'il fait
             Exemples de ton:
             - "Ce module est comme un vieux chêne au cœur de la forêt : il fournit l'ombre (les fonctions de base) dont dépendent les jeunes pousses (les autres modules)."
             - "Telle une rivière sinueuse, cette fonction navigue entre les conditions, cherchant le chemin le plus court vers l'océan du résultat attendu."
@@ -355,14 +355,14 @@ export class ApiManager {
             const response = await this.currentProvider.generateCompletion(prompt, {
                 maxTokens: 60,
                 temperature: 0.8,
-                timeoutMs: 15000
+                timeoutMs: 25000
             });
             await this.updateStatusBar();
 
             const commitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore):\s.{5,60}$/;
             const finalResponse = response?.trim();
 
-            if (finalResponse && commitRegex.test(finalResponse)) {
+            if (finalResponse) {
                 return finalResponse;
             } else {
                  console.warn("Generated commit message did not match expected format. Using fallback.", finalResponse);

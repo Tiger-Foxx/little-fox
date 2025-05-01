@@ -763,6 +763,7 @@ export function activate(context: vscode.ExtensionContext) {
                             if (result) {
                                 // Exécuter la commande git commit avec le message fourni
                                 const terminal = vscode.window.createTerminal('Git Commit');
+                                terminal.sendText(`git add -A"`);
                                 terminal.sendText(`git commit -m "${result.replace(/"/g, '\\"')}"`);
                                 terminal.show();
                                 vscode.window.showInformationMessage('Message de commit appliqué! 🚀');
@@ -1015,60 +1016,186 @@ export function activate(context: vscode.ExtensionContext) {
     actionHistory.addAction('extensionActivated');
 }
 
+// Supposons que tu aies toujours ApiManager, Configuration, etc. importés si nécessaire ailleurs.
+
+/**
+ * Récupère un résumé et le diff des changements Git STAGED (indexés).
+ * @returns Une chaîne contenant le résumé des changements staged, ou undefined en cas d'erreur.
+ */
 async function getGitChanges(): Promise<string | undefined> {
     try {
-        const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
+        // 1. Obtenir l'extension Git et l'API
+        const gitExtension = vscode.extensions.getExtension<{ getAPI(version: number): any }>('vscode.git');
         if (!gitExtension) {
-            vscode.window.showWarningMessage('L\'extension Git n\'est pas disponible');
+            vscode.window.showWarningMessage('L\'extension Git n\'est pas activée ou installée.');
+            console.error("Extension Git non trouvée.");
             return undefined;
         }
+        // Il est préférable d'activer l'extension explicitement si elle ne l'est pas déjà
+        console.log("Extension Git trouvée, activation...");
+        await gitExtension.activate();
+        console.log("Extension Git activée.");
+        const api = gitExtension.exports.getAPI(1);
+        console.log("API Git version 1 obtenue.");
+
+        if (!api) {
+            console.error("Échec de l'obtention de l'API Git v1.");
+            vscode.window.showWarningMessage("Impossible d'obtenir l'API Git v1.");
+            return undefined;
+       }
+       console.log("API Git initialisée. Recherche de dépôts...");
+
+        // 2. Trouver le bon dépôt (s'il y en a plusieurs ouverts)
+        // Si tu travailles dans le contexte d'un fichier ouvert, tu peux essayer de trouver le repo correspondant
+         // 2. Trouver le bon dépôt (Ajout de logs ici)
+        const currentWorkspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
+        let repo: any = undefined; // Utiliser 'any' pour faciliter le logging
         
-        const api = gitExtension.getAPI(1);
-        const repo = api.repositories[0];
+        if (currentWorkspaceFolder) {
+         console.log(`Recherche du dépôt pour le workspace: ${currentWorkspaceFolder.uri.fsPath}`);
+        repo = api.getRepository(currentWorkspaceFolder.uri);
+            console.log(`Dépôt trouvé pour le workspace: ${repo ? repo.rootUri?.fsPath : 'Non trouvé'}`);
+        }
         
-        if (!repo) {
-            vscode.window.showWarningMessage('Aucun dépôt trouvé');
+
+        if (!repo && api.repositories && api.repositories.length > 0) {
+            console.log(`Aucun dépôt pour le workspace ou pas de workspace. ${api.repositories.length} dépôt(s) disponible(s).`);
+            repo = api.repositories[0]; // Prend le premier par défaut
+            console.log(`Utilisation du premier dépôt trouvé: ${repo ? repo.rootUri?.fsPath : 'Invalide?'}`);
+             if (api.repositories.length > 1) {
+                 vscode.window.showInformationMessage(`Plusieurs dépôts Git ouverts. Utilisation de: ${repo?.rootUri?.fsPath}`);
+             }
+        } else if (!repo) {
+             console.log("Aucun dépôt Git n'a pu être identifié.");
+             vscode.window.showWarningMessage('Aucun dépôt Git trouvé dans l\'espace de travail.');
+             return undefined;
+        }
+        // ---- LOG CRUCIAL ICI ----
+        console.log('Vérification de l\'objet "repo" final avant d\'accéder à "state":', repo);
+        if (!repo || typeof repo !== 'object') {
+             console.error("L'objet 'repo' n'est pas valide ou est undefined.");
+             vscode.window.showErrorMessage("Erreur: Impossible d'obtenir un objet de dépôt Git valide.");
+             return undefined;
+        }
+        try {
+            console.log('Clés de l\'objet repo:', Object.keys(repo));
+            console.log('Vérification de repo.state:', repo.state ? 'existe' : 'N\'EXISTE PAS');
+            console.log('Vérification de repo.diffIndexWithHead:', typeof repo.diffIndexWithHead); // Affiche 'function' ou 'undefined'
+        } catch(logError) {
+             console.error("Erreur lors de l'introspection de l'objet repo:", logError)
+        }
+        // 3. Vérifier les changements STAGED (indexés)
+        if (!repo.state) {
+            console.error("L'objet repo n'a pas de propriété 'state'.");
+            vscode.window.showErrorMessage("Erreur: L'objet dépôt Git est incomplet.");
             return undefined;
         }
-        
-        // Récupérer tous les fichiers modifiés
-        const changes = repo.state.workingTreeChanges;
-        if (changes.length === 0) {
-            return "Aucun changement détecté";
+
+
+        // 3. Vérifier les changements STAGED (indexés)
+        const stagedChanges = repo.state.indexChanges;
+        console.log(`Nombre de changements indexés trouvés: ${stagedChanges.length}`);
+        if (stagedChanges.length === 0) {
+            vscode.window.showInformationMessage('Aucun changement indexé (staged) à commiter.');
+            // Retourner une chaîne vide ou un message spécifique est peut-être mieux qu'undefined
+            return "Aucun changement indexé (staged) détecté.";
         }
-        
-        // Construire un résumé des changements
-        let changesSummary = `Fichiers modifiés: ${changes.length}\n\n`;
-        
-        for (const change of changes) {
-            changesSummary += `${change.uri.fsPath.split('/').pop()} (${change.status})\n`;
-            
-            // Récupérer le diff pour ce fichier
-            try {
-                const diff = await repo.diffWith(change.uri);
-                if (diff) {
-                    // Ajouter un résumé du diff (limité pour ne pas dépasser la limite de tokens)
-                    const diffLines = diff.split('\n').slice(0, 20);
-                    changesSummary += diffLines.join('\n') + '\n';
-                    
-                    if (diff.split('\n').length > 20) {
-                        changesSummary += '... (diff tronqué)\n';
-                    }
-                }
-            } catch (error) {
-                console.error('Erreur lors de la récupération du diff:', error);
+
+        // 4. Construire le résumé et le diff
+        let changesSummary = `Résumé des changements indexés (${stagedChanges.length} fichier(s)):\n\n`;
+        const diffPromises: Promise<string | null>[] = []; // Pour récupérer les diffs en parallèle
+
+        for (const change of stagedChanges) {
+            // Ajouter le nom et le statut du fichier au résumé
+            const fileName = change.uri.fsPath.substring(repo.rootUri.fsPath.length + 1); // Chemin relatif
+            // Le statut des indexChanges est différent (ex: IndexAdded, IndexModified)
+            changesSummary += `- ${fileName} (${gitStatusToString(change.status)})\n`;
+
+
+            // Préparer la promesse pour obtenir le diff de ce fichier indexé vs HEAD
+            console.log(`Tentative d'appel à diffIndexWithHead pour ${fileName}`);
+            if (typeof repo.diffIndexWithHead !== 'function') {
+                 console.error(`ERREUR: repo.diffIndexWithHead n'est PAS une fonction sur l'objet repo actuel!`);
+                 // On peut décider de sauter ce fichier ou de retourner une erreur spécifique
+                 diffPromises.push(Promise.resolve(`[Erreur: diff indisponible pour ${fileName}]`));
+                 continue; // Passe au fichier suivant
             }
-            
-            changesSummary += '\n';
+            diffPromises.push(
+                repo.diffIndexWithHead(change.uri.fsPath).catch((diffError: any) => {
+                    console.error(`Erreur lors de la récupération du diff pour ${fileName}:`, diffError);
+                    return `Impossible de récupérer le diff pour ${fileName}.`; // Retourne un message d'erreur au lieu de null
+                })
+            );
         }
-        
-        return changesSummary;
+
+        // Attendre que tous les diffs soient récupérés
+        const diffResults = await Promise.all(diffPromises);
+
+        // Ajouter les diffs au résumé (en les limitant)
+        changesSummary += "\n--- Diff Détails ---\n";
+        diffResults.forEach((diff, index) => {
+            const change = stagedChanges[index];
+            const fileName = change.uri.fsPath.substring(repo.rootUri.fsPath.length + 1);
+            changesSummary += `\n--- ${fileName} ---\n`;
+            if (diff) {
+                const diffLines = diff.split('\n');
+                // Limite pour éviter de surcharger l'IA
+                const maxLines = 30;
+                if (diffLines.length > maxLines) {
+                    changesSummary += diffLines.slice(0, maxLines).join('\n') + '\n... (diff tronqué)\n';
+                } else {
+                    changesSummary += diff + '\n';
+                }
+            } else if (diff === null) { // Si une erreur était retournée comme null (maintenant géré avec un message d'erreur)
+                 changesSummary += `Impossible de récupérer le diff pour ${fileName}.\n`;
+            }
+        });
+
+
+        return changesSummary.trim(); // Enlever les espaces superflus à la fin
+
     } catch (error) {
-        console.error('Erreur lors de la récupération des changements Git:', error);
+        console.error('Erreur générale lors de la récupération des changements Git indexés:', error);
+        vscode.window.showErrorMessage('Erreur lors de la récupération des changements Git. Voir la console pour les détails.');
         return undefined;
     }
 }
 
+// Helper pour convertir les statuts numériques de l'API Git en chaînes lisibles
+// Tu peux trouver les valeurs de l'enum 'Status' dans la définition de l'API Git si besoin
+function gitStatusToString(status: number): string {
+    // Ces valeurs sont basées sur l'enum `Status` de l'API vscode.git (peut nécessiter ajustement)
+    switch (status) {
+        case 0: return 'INDEX_MODIFIED';
+        case 1: return 'INDEX_ADDED';
+        case 2: return 'INDEX_DELETED';
+        case 3: return 'INDEX_RENAMED';
+        case 4: return 'INDEX_COPIED';
+        case 5: return 'WORKING_TREE_MODIFIED'; // Normalement pas dans indexChanges mais bon...
+        case 6: return 'WORKING_TREE_ADDED';    // idem
+        case 7: return 'WORKING_TREE_DELETED';  // idem
+        case 8: return 'WORKING_TREE_TYPE_CHANGE'; // idem
+        case 9: return 'WORKING_TREE_RENAMED'; // idem
+        case 10: return 'WORKING_TREE_COPIED'; // idem
+        case 11: return 'UNTRACKED';
+        case 12: return 'IGNORED';
+        case 13: return 'INTENT_TO_ADD';
+        case 14: return 'BOTH_DELETED';
+        case 15: return 'ADDED_BY_US';
+        case 16: return 'DELETED_BY_THEM';
+        case 17: return 'ADDED_BY_THEM';
+        case 18: return 'DELETED_BY_US';
+        case 19: return 'BOTH_ADDED';
+        case 20: return 'BOTH_MODIFIED';
+        default: return `UNKNOWN (${status})`;
+    }
+}
+
+
+// N'oublie pas d'exporter ta fonction si elle est utilisée ailleurs
+// export { getGitChanges };
+
+// Ta fonction deactivate (inchangée)
 export function deactivate() {
     console.log('Little Fox s\'en va chasser! Au revoir! 🦊');
 }

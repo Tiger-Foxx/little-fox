@@ -2,17 +2,31 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "npm: watch", // Important: le label doit correspondre à ce que tu veux utiliser
             "type": "npm",
             "script": "watch",
-            "problemMatcher": "$tsc-watch",
-            "isBackground": true,
+            "isBackground": true, // <-- Dit à VS Code de ne pas attendre la fin de la tâche
             "presentation": {
-                "reveal": "never"
+                "reveal": "never" // Optionnel: ne pas forcément montrer le terminal de la tâche
             },
             "group": {
                 "kind": "build",
-                "isDefault": true
-            }
+                "isDefault": true // <-- Fait de cette tâche le ${defaultBuildTask}
+            },
+            "problemMatcher": [
+                // Utilise un problem matcher qui reconnaît quand webpack a fini la compil initiale
+                // "$tsc-watch" fonctionne souvent bien car webpack imite sa sortie.
+                // Tu peux aussi utiliser "$webpack-watch" s'il est défini ou en créer un custom.
+                "$tsc-watch"
+            ]
+        },
+        {
+            "label": "npm: build", // Ajoute aussi une tâche de build simple (sans watch)
+            "type": "npm",
+            "script": "build", // Suppose que tu as un script "build": "webpack" dans package.json
+            "group": "build"
+            // Pas besoin de isBackground ici, car elle se termine.
         }
+        // Tu peux ajouter d'autres tâches ici si nécessaire (lint, test...)
     ]
 }
