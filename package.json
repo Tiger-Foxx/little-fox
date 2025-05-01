@@ -3,11 +3,15 @@
   "displayName": "Little Fox",
   "description": "Un assistant renard intelligent qui commente votre code avec humour, raconte son histoire, et génère des messages de commit honnêtes",
   "version": "0.1.0",
-  "publisher": "theTigerFox",
+  "publisher": "TheLittleFox",
   "icon": "resources/images/fox-icon.png",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.99.0"
   },
+  "repository": {
+  "type": "git",
+  "url": "https://github.com/Tiger-Foxx/little-fox.git" 
+},
   "categories": [
     "Other",
     "Programming Languages",
