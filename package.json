@@ -2,11 +2,11 @@
   "name": "little-fox",
   "displayName": "Little Fox",
   "description": "Un assistant renard intelligent qui commente votre code avec humour, raconte son histoire, et génère des messages de commit honnêtes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "TheLittleFox",
   "icon": "resources/images/fox-icon.png",
   "engines": {
-    "vscode": "^1.99.0"
+    "vscode": "^1.80.0"
   },
   "repository": {
   "type": "git",
@@ -221,7 +221,7 @@
   "devDependencies": {
     "@eslint/js": "^9.25.1",
     "@types/node": "^22.15.3",
-    "@types/vscode": "^1.99.1",
+    "@types/vscode": "^1.80.1",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
     "eslint": "^9.25.1",
