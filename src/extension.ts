@@ -763,7 +763,7 @@ export function activate(context: vscode.ExtensionContext) {
                             if (result) {
                                 // Exécuter la commande git commit avec le message fourni
                                 const terminal = vscode.window.createTerminal('Git Commit');
-                                terminal.sendText(`git add -A"`);
+                                terminal.sendText(`git add -A\n`);
                                 terminal.sendText(`git commit -m "${result.replace(/"/g, '\\"')}"`);
                                 terminal.show();
                                 vscode.window.showInformationMessage('Message de commit appliqué! 🚀');
