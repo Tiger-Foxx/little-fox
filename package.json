@@ -2,7 +2,7 @@
   "name": "little-fox",
   "displayName": "Little Fox",
   "description": "Un assistant renard intelligent qui commente votre code avec humour, raconte son histoire, et génère des messages de commit honnêtes",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "TheLittleFox",
   "icon": "resources/images/fox-icon.png",
   "engines": {
@@ -186,7 +186,7 @@
         {
           "id": "little-fox-sidebar",
           "title": "Little Fox",
-          "icon": "resources/images/fox-icon.png"
+          "icon": "resources/images/fox-icon4.png"
         }
       ]
     },
