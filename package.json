@@ -1,7 +1,7 @@
 {
   "name": "little-fox",
   "displayName": "Little Fox",
-  "description": "Un assistant renard intelligent qui commente votre code avec humour, raconte son histoire, et génère des messages de commit honnêtes",
+  "description": "Un assistant renard intelligent qui génère des messages de commit honnêtes et amusants , explique comme une histoire et commente votre code avec humour.",
   "version": "0.1.2",
   "publisher": "TheLittleFox",
   "icon": "resources/images/fox-icon.png",
@@ -13,6 +13,7 @@
   "url": "https://github.com/Tiger-Foxx/little-fox.git" 
 },
   "categories": [
+    "AI",
     "Other",
     "Programming Languages",
     "Snippets",
@@ -133,7 +134,7 @@
             "Español",
             "Deutsch"
           ],
-          "description": "Langue de l'interface (les messages de fallback restent en français)"
+          "description": "Langue de l'interface "
         },
         "littleFox.autoRoastOnSave": {
           "type": "boolean",
@@ -186,9 +187,10 @@
         {
           "id": "little-fox-sidebar",
           "title": "Little Fox",
-          "icon": "resources/images/fox-icon4.png"
+          "icon": "resources/images/fox-icon2.svg"
         }
       ]
+      
     },
     "views": {
       "little-fox-sidebar": [

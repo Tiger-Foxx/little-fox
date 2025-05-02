@@ -193,6 +193,7 @@ export class ApiManager {
 
             Tâche: Analyse le bloc de code suivant fourni par un développeur (probablement fatigué). Trouve UN SEUL point faible, drôle ou intéressant à commenter. Fais une remarque courte (1-2 phrases MAX), percutante et humoristique dans le style stand-up. Utilise le tutoiement. Fais comme si tu t'adressais directement au développeur dans la salle. Tu peux utiliser des analogies animales (renards, poules, etc.) ou des situations de dev courantes.
             Note: si on t'envoie carrement une fonction , alors l'utilisateur attend de toi que tu commentes la foncrion en question , donc oui sois sarcasrtique mais commente aussi bien la fonction de facon correcte et explicite
+            **important** : meme si ils ont une pointe de sarcasme tes commentaires doivent avant tout 'commenter' cet a dire que ca doit etre utile donc avant mem de rigloler sur le bloc tu dois dire ce qu'il fait
             Exemples de ton:
             - "Ah, les variables globales... C'est comme laisser la porte du poulailler ouverte et espérer que le renard ne viendra pas."
             - "Cette fonction fait 500 lignes ? Elle a son propre code postal ou bien ?"
@@ -254,9 +255,9 @@ export class ApiManager {
         // Prompt (inchangé par rapport à la v1)
         const prompt = `
             Persona: Tu es "Maître Renard Conteur", un vieux renard sage et un peu poète, qui voit la beauté et la complexité même dans les lignes de code les plus obscures. Tu transformes le code en une petite fable ou une légende.
-
+            *important*: ne sois pas non plus trop abstrait car le dev doit comprendre le code c'est aussi le but (et surtout le but) mm si c'est avec amusement le dev doit bien comprendre le code qu'il t passe.
             Tâche: Regarde attentivement ce morceau de code. Raconte son histoire en quelques phrases (3-5 phrases environ). Imagine que ce code est une créature, un lieu ou un artefact dans une forêt enchantée. Décris sa nature, son rôle, ses défis, ses réussites. Utilise des métaphores liées à la forêt, aux animaux, aux saisons, à la ruse du renard. Le ton doit être imaginatif, légèrement philosophique, mais toujours ancré dans ce que le code *fait* réellement.
-            - n'hesite pas aussi a expliquer la logieu derriere ainsi que fonction par fonctions car le but premier n'est pas de conter mais d'expliquer le code et ce qu'il fait
+            - n'hesite pas aussi a expliquer ainsi que fonction par fonctions car le but premier n'est pas de conter mais d'expliquer le code et ce qu'il fait
             Exemples de ton:
             - "Ce module est comme un vieux chêne au cœur de la forêt : il fournit l'ombre (les fonctions de base) dont dépendent les jeunes pousses (les autres modules)."
             - "Telle une rivière sinueuse, cette fonction navigue entre les conditions, cherchant le chemin le plus court vers l'océan du résultat attendu."
@@ -327,7 +328,6 @@ export class ApiManager {
 
             Tâche: Analyse le "diff" (les changements de code) suivant. Génère UN message de commit COURT (max 70 caractères) qui respecte le format Conventional Commits (\`type: description\`). Le \`type\` doit être l'un des suivants : feat, fix, docs, style, refactor, perf, test, chore. La \`description\` doit résumer les changements de manière honnête et un peu drôle/auto-dépréciative.
             **Important**: Tout en étant drôle, essaie d'être **utile** si possible. Si tu peux facilement identifier un nom de fichier principal modifié, une fonction ajoutée/corrigée, ou l'objectif principal du changement à partir du diff, mentionne-le brièvement dans la description. Mais ne sacrifie pas la concision ou l'humour pour ça. Fais de ton mieux pour équilibrer les deux !
-
             Exemples de ton (potentiellement plus utiles):
             - fix: Correction du bug d'affichage dans UserProfile. Oups.
             - feat: Ajout du bouton de sauvegarde (enfin !).

@@ -1198,24 +1198,22 @@ function gitStatusToString(status: number): string {
         case 2: return 'INDEX_DELETED';
         case 3: return 'INDEX_RENAMED';
         case 4: return 'INDEX_COPIED';
-        case 5: return 'WORKING_TREE_MODIFIED'; // Normalement pas dans indexChanges mais bon...
-        case 6: return 'WORKING_TREE_ADDED';    // idem
-        case 7: return 'WORKING_TREE_DELETED';  // idem
-        case 8: return 'WORKING_TREE_TYPE_CHANGE'; // idem
-        case 9: return 'WORKING_TREE_RENAMED'; // idem
-        case 10: return 'WORKING_TREE_COPIED'; // idem
-        case 11: return 'UNTRACKED';
-        case 12: return 'IGNORED';
-        case 13: return 'INTENT_TO_ADD';
-        case 14: return 'BOTH_DELETED';
-        case 15: return 'ADDED_BY_US';
-        case 16: return 'DELETED_BY_THEM';
-        case 17: return 'ADDED_BY_THEM';
-        case 18: return 'DELETED_BY_US';
-        case 19: return 'BOTH_ADDED';
-        case 20: return 'BOTH_MODIFIED';
+        case 5: return 'WORKING_TREE_MODIFIED';   // MODIFIED dans l’API
+        case 6: return 'WORKING_TREE_DELETED';    // DELETED dans l’API
+        case 7: return 'UNTRACKED';               // UNTRACKED dans l’API
+        case 8: return 'IGNORED';                 // IGNORED dans l’API
+        case 9: return 'INTENT_TO_ADD';           // idem
+        case 10: return 'INTENT_TO_RENAME';
+        case 11: return 'TYPE_CHANGED';
+        case 12: return 'ADDED_BY_US';
+        case 13: return 'ADDED_BY_THEM';
+        case 14: return 'DELETED_BY_US';
+        case 15: return 'DELETED_BY_THEM';
+        case 16: return 'BOTH_ADDED';
+        case 17: return 'BOTH_DELETED';
+        case 18: return 'BOTH_MODIFIED';
         default: return `UNKNOWN (${status})`;
-    }
+      }
 }
 
 
